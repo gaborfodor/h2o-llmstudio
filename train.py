@@ -547,10 +547,10 @@ def run(cfg: DefaultConfigProblemBase) -> float:
     ):
         logger.warning(
             f"More than {os.getenv('GPT_EVAL_MAX', 100)} validation records. "
-            "Safeguarding against OpenAI API costs. Setting metric to BLEU. "
+            "Safeguarding against OpenAI API costs. Setting metric to WER. "
             "Change GPT_EVAL_MAX to run GPT validation."
         )
-        cfg.prediction.metric = "BLEU"
+        cfg.prediction.metric = "WER"
 
     # prepare data
     logger.info("Preparing train and validation data")

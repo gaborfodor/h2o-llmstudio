@@ -685,8 +685,10 @@ def save_predictions(
     )
     raw_preds_name = os.path.join(cfg.output_directory, f"{mode}_raw_predictions.pkl")
     csv_preds_name = os.path.join(cfg.output_directory, f"{mode}_predictions.csv")
+    pq_preds_name = os.path.join(cfg.output_directory, f"{mode}_predictions.pq")
     save_pickle(raw_preds_name, val_data)
     val_df.to_csv(csv_preds_name, index=False)
+    val_df.to_parquet(pq_preds_name, index=False)
 
 
 def update_backbone_config(config: Any, cfg: DefaultConfigProblemBase):

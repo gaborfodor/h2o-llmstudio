@@ -9,6 +9,7 @@ from joblib import Parallel, delayed
 from numpy.typing import NDArray
 from openai import AzureOpenAI, OpenAI
 from sacrebleu import BLEU
+import jiwer
 from torch import nn
 from tqdm import tqdm
 
@@ -21,6 +22,71 @@ logger = logging.getLogger(__name__)
 
 LLM_RETRY_ATTEMPTS = int(os.getenv("LLM_RETRY_ATTEMPTS", 3))
 LLM_TIMEOUT = int(os.getenv("LLM_TIMEOUT", 60))
+
+
+def wer_score(
+    cfg: DefaultConfigProblemBase, results: Dict, val_df: pd.DataFrame
+) -> NDArray:
+    """
+    Calculate WER scores for predicted texts against target texts.
+
+    This function computes the WER score for each pair of predicted and target texts.
+
+    Args:
+        cfg: DefaultConfigProblemBase, ignored
+        results: Dict, containing 'predicted_text' and 'target_text' lists
+        val_df: pd.DataFrame, ignored
+
+    Returns:
+        NDArray: An array of WER scores for each text pair
+
+    Note:
+        - Empty target texts are assigned a score of 1.0
+    """
+    # Input validation
+    if len(results["target_text"]) != len(results["predicted_text"]):
+        raise ValueError(
+            f"Length of target_text ({len(results['target_text'])}) and predicted_text "
+            f"({len(results['predicted_text'])}) should be the same."
+        )
+    if len(results["target_text"]) == 0:
+        raise ValueError("No data to calculate WER score")
+
+    scores_wo_test = []
+    for predicted_text, target_text in zip(
+        results["predicted_text"], results["target_text"]
+    ):
+        if target_text == "":
+            score = 1.0
+        elif target_text == "TEST_LOCATION":
+            continue
+        else:
+            score = jiwer.wer(
+                target_text,
+                predicted_text,
+                # truth_transform=transforms,
+                # hypothesis_transform=transforms,
+            )
+        scores_wo_test.append(score)
+    mean_score = np.mean(scores_wo_test)
+
+    scores = []
+    for predicted_text, target_text in zip(
+        results["predicted_text"], results["target_text"]
+    ):
+        if target_text == "":
+            score = 1.0
+        elif target_text == "TEST_LOCATION":
+            score = mean_score
+        else:
+            score = jiwer.wer(
+                target_text,
+                predicted_text,
+                # truth_transform=transforms,
+                # hypothesis_transform=transforms,
+            )
+        scores.append(score)
+    return np.array(scores)
 
 
 def sacrebleu_score(
@@ -224,6 +290,7 @@ class Metrics:
         "Perplexity": (perplexity, "min", "mean"),
         "BLEU": (sacrebleu_score, "max", "mean"),
         "GPT": (gpt_score, "max", "mean"),
+        "WER":(wer_score, "min", "mean"),
     }
 
     @classmethod
@@ -239,4 +306,4 @@ class Metrics:
         Returns:
             A class to build the Metrics
         """
-        return cls._metrics.get(name, cls._metrics["BLEU"])
+        return cls._metrics.get(name, cls._metrics["WER"])

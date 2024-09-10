@@ -37,8 +37,8 @@ def check_metric(cfg):
     """
 
     if "GPT" in cfg.prediction.metric and os.getenv("OPENAI_API_KEY", "") == "":
-        logger.warning("No OpenAI API Key set. Setting metric to BLEU. ")
-        cfg.prediction.metric = "BLEU"
+        logger.warning("No OpenAI API Key set. Setting metric to WER. ")
+        cfg.prediction.metric = "WER"
     return cfg
 
 
